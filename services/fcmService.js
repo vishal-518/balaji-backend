@@ -1,53 +1,37 @@
-// import admin from '../config/firebase.js';
+import admin from '../config/firebase.js';
 
-// export const sendDeviceCommand = async (fcmToken, action, payload = {}) => {
-//   if (!fcmToken) {
-//     console.log(`[SIMULATED FCM] Action: ${action} (No FCM Token registered yet)`);
-//     return { simulated: true };
-//   }
+export const sendDeviceCommand = async (fcmToken, command, extraData = {}) => {
+  if (!fcmToken) {
+    console.warn('Skipping FCM send: No FCM token registered for device');
+    return { success: false, reason: 'NO_TOKEN' };
+  }
 
-//   if (!admin.apps.length) {
-//     console.log(`[SIMULATED FCM] Firebase not configured. Action: ${action}`);
-//     return { simulated: true };
-//   }
+  if (!admin.apps.length) {
+    console.warn('Skipping FCM send: Firebase Admin not initialized');
+    return { success: false, reason: 'FIREBASE_NOT_INIT' };
+  }
 
-//   const message = {
-//     token: fcmToken,
-//     data: {
-//       action: action, // 'LOCK_DEVICE' or 'UNLOCK_DEVICE'
-//       amount: String(payload.amount || 0),
-//       reason: String(payload.reason || 'EMI Overdue - Balaji Communication'),
-//       shopPhone: '9636690689',
-//     },
-//     android: {
-//       priority: 'high',
-//     },
-//   };
+  const message = {
+    token: fcmToken,
+    android: {
+      priority: 'high',
+      ttl: 0,
+    },
+    data: {
+      command: String(command),
+      timestamp: String(Date.now()),
+      ...Object.fromEntries(
+        Object.entries(extraData).map(([k, v]) => [k, String(v)])
+      ),
+    },
+  };
 
-//   const response = await admin.messaging().send(message);
-//   console.log(`FCM ${action} sent successfully:`, response);
-//   return response;
-// };
-
-import admin from 'firebase-admin';
-import fs from 'fs';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-let serviceAccount;
-
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} else if (process.env.FIREBASE_CREDENTIALS_PATH && fs.existsSync(process.env.FIREBASE_CREDENTIALS_PATH)) {
-  serviceAccount = JSON.parse(fs.readFileSync(process.env.FIREBASE_CREDENTIALS_PATH, 'utf8'));
-}
-
-if (serviceAccount && !admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-  console.log('Firebase Admin Initialized Successfully');
-}
-
-export default admin;
+  try {
+    const response = await admin.messaging().send(message);
+    console.log(`FCM Command [${command}] sent successfully:`, response);
+    return { success: true, messageId: response };
+  } catch (error) {
+    console.error(`FCM Command [${command}] failed:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
