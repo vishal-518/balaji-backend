@@ -1,4 +1,27 @@
-import admin from '../config/firebase.js';
+import admin from 'firebase-admin';
+import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+let serviceAccount;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else if (process.env.FIREBASE_CREDENTIALS_PATH && fs.existsSync(process.env.FIREBASE_CREDENTIALS_PATH)) {
+  serviceAccount = JSON.parse(fs.readFileSync(process.env.FIREBASE_CREDENTIALS_PATH, 'utf8'));
+}
+
+if (serviceAccount && !admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log('Firebase Admin Initialized Successfully');
+} else if (!admin.apps.length) {
+  console.warn('WARNING: Firebase credentials not found.');
+}
+
+export default admin;import admin from '../config/firebase.js';
 
 export const sendDeviceCommand = async (fcmToken, command, extraData = {}) => {
   if (!fcmToken) {
