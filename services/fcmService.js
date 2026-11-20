@@ -1,4 +1,4 @@
-import admin from '../config/firebase.js';
+import { getApps, getMessaging } from '../config/firebase.js';
 
 export const sendDeviceCommand = async (fcmToken, command, extraData = {}) => {
   if (!fcmToken) {
@@ -6,7 +6,7 @@ export const sendDeviceCommand = async (fcmToken, command, extraData = {}) => {
     return { success: false, reason: 'NO_TOKEN' };
   }
 
-  if (!admin.apps?.length) {
+  if (!getApps().length) {
     console.warn('Skipping FCM send: Firebase Admin not initialized');
     return { success: false, reason: 'FIREBASE_NOT_INIT' };
   }
@@ -27,7 +27,7 @@ export const sendDeviceCommand = async (fcmToken, command, extraData = {}) => {
   };
 
   try {
-    const response = await admin.messaging().send(message);
+    const response = await getMessaging().send(message);
     console.log(`FCM Command [${command}] sent successfully:`, response);
     return { success: true, messageId: response };
   } catch (error) {
