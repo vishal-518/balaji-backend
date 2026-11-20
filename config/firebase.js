@@ -1,4 +1,5 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import fs from 'fs';
 import dotenv from 'dotenv';
 
@@ -9,9 +10,9 @@ const credPath = process.env.FIREBASE_CREDENTIALS_PATH || './firebase-service-ac
 try {
   if (fs.existsSync(credPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(credPath, 'utf8'));
-    if (!admin.apps?.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert(serviceAccount),
       });
     }
     console.log('Firebase Admin Initialized Successfully');
@@ -22,4 +23,4 @@ try {
   console.error('Firebase Init Error:', error.message);
 }
 
-export default admin;
+export { getApps, getMessaging };
