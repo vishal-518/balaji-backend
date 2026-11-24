@@ -15,6 +15,8 @@ export const saveCustomerInfo = async (req, res, next) => {
       imei1,
       imei2,
       model,
+      emiAmount,
+      totalEmis,
     } = req.body;
 
     // Check karein ki IMEI 1 pehle se registered to nahi hai
@@ -34,10 +36,9 @@ export const saveCustomerInfo = async (req, res, next) => {
       imei1,
       imei2: imei2 || '',
       model: model || 'Android Smartphone',
+      emiAmount: Number(emiAmount) || 0,
+      totalEmis: Number(totalEmis) || 6,
     });
-
-    // Monthly EMI schedule generate karein
-    // await generateEmiSchedule(customerRecord._id, customerRecord._id, Number(emiAmount), Number(totalEmis || 6));
 
     // 6-Tap QR Code payload banayein
     const qrPayload = buildProvisioningPayload(imei1);
@@ -104,41 +105,14 @@ export const unlockCustomerPhone = async (req, res, next) => {
   }
 };
 
-// 5. Customer Locker APK Sync (IMEI 1 ya IMEI 2 se match karega)
-// export const syncCustomerPhone = async (req, res, next) => {
-//   try {
-//     const { imei, fcmToken, battery, location } = req.body;
-//     const record = await CustomerInfo.findOne({
-//       $or: [{ imei1: imei }, { imei2: imei }],
-//     });
-
-//     if (!record) return res.status(404).json({ success: false, message: 'IMEI not found' });
-
-//     if (fcmToken) record.fcmToken = fcmToken;
-//     if (battery !== undefined) record.battery = battery;
-//     if (location) record.location = location;
-//     record.lastSync = new Date();
-//     await record.save();
-
-//     res.json({
-//       success: true,
-//       isLocked: record.isLocked,
-//       emiAmount: record.emiAmount,
-//       lockReason: record.lockReason,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };
-
+// 5. Sync Customer Phone (Public Route for Android App)
 export const syncCustomerPhone = async (req, res, next) => {
   try {
     const { customerId, imei, imei1, fcmToken, battery, location } = req.body;
     const targetImei = imei1 || imei;
 
-    // Customer ID ya IMEI kisi se bhi match karein
-    const query = customerId 
-      ? { _id: customerId } 
+    const query = customerId
+      ? { _id: customerId }
       : { $or: [{ imei1: targetImei }, { imei2: targetImei }] };
 
     const record = await CustomerInfo.findOne(query);
@@ -155,6 +129,7 @@ export const syncCustomerPhone = async (req, res, next) => {
       isLocked: record.isLocked,
       emiAmount: record.emiAmount,
       lockReason: record.lockReason,
+      status: record.status || 'ACTIVE',
     });
   } catch (err) {
     next(err);
@@ -172,6 +147,32 @@ export const getStats = async (req, res, next) => {
     res.json({
       success: true,
       stats: { totalDevices, lockedDevices, totalOverdueAmount },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 7. Permanent Release Device Owner (Remove Kit after Full EMI Payment)
+export const releaseCustomerDevice = async (req, res, next) => {
+  try {
+    const { id } = req.body;
+    const record = await CustomerInfo.findById(id);
+    if (!record) return res.status(404).json({ success: false, message: 'Customer record not found' });
+
+    if (record.fcmToken) {
+      await sendDeviceCommand(record.fcmToken, 'RELEASE_DEVICE');
+    }
+
+    record.isLocked = false;
+    record.lockReason = '';
+    record.status = 'RELEASED';
+    await record.save();
+
+    res.json({
+      success: true,
+      message: 'Device Owner release command sent successfully!',
+      customer: record,
     });
   } catch (err) {
     next(err);

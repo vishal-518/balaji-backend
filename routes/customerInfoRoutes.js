@@ -6,6 +6,7 @@ import {
   unlockCustomerPhone,
   syncCustomerPhone,
   getStats,
+  releaseCustomerDevice,
 } from '../controllers/customerInfoController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 
@@ -17,6 +18,7 @@ router.get('/all', protect, getAllCustomerInfo);
 router.get('/stats', protect, getStats);
 router.post('/lock', protect, lockCustomerPhone);
 router.post('/unlock', protect, unlockCustomerPhone);
+router.post('/release', protect, releaseCustomerDevice);
 
 // Customer Mobile Locker App Route (Public)
 router.post('/sync', syncCustomerPhone);

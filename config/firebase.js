@@ -1,26 +1,28 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getMessaging } from 'firebase-admin/messaging';
-import fs from 'fs';
-import dotenv from 'dotenv';
+import admin from 'firebase-admin';
+import { readFileSync, existsSync } from 'fs';
+import path from 'path';
 
-dotenv.config();
-
-const credPath = process.env.FIREBASE_CREDENTIALS_PATH || './firebase-service-account.json';
+const serviceAccountPath = path.resolve('firebase-service-account.json');
 
 try {
-  if (fs.existsSync(credPath)) {
-    const serviceAccount = JSON.parse(fs.readFileSync(credPath, 'utf8'));
-    if (!getApps().length) {
-      initializeApp({
-        credential: cert(serviceAccount),
-      });
+  if (existsSync(serviceAccountPath)) {
+    const rawData = readFileSync(serviceAccountPath, 'utf8').trim();
+    if (rawData) {
+      const serviceAccount = JSON.parse(rawData);
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+        console.log('Firebase Admin Initialized Successfully');
+      }
+    } else {
+      console.warn('WARNING: firebase-service-account.json is empty. Running in FCM simulation mode.');
     }
-    console.log('Firebase Admin Initialized Successfully');
   } else {
-    console.warn('WARNING: Firebase credentials file not found at:', credPath);
+    console.warn('WARNING: firebase-service-account.json not found. Running in FCM simulation mode.');
   }
 } catch (error) {
-  console.error('Firebase Init Error:', error.message);
+  console.error('Firebase Config Warning:', error.message);
 }
 
-export { getApps, getMessaging };
+export default admin;

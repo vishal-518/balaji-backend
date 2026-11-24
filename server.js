@@ -11,6 +11,7 @@ import { errorHandler } from './middlewares/errorMiddleware.js';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Security Middlewares
 app.use(helmet());

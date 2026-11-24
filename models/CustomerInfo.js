@@ -15,9 +15,17 @@ const customerInfoSchema = new mongoose.Schema({
   model: { type: String, default: 'Android Smartphone' },
 
   // EMI & Locking System Fields
+  emiAmount: { type: Number, default: 0 },
+  totalEmis: { type: Number, default: 6 },
+  paidEmis: { type: Number, default: 0 },
   fcmToken: { type: String, default: '' },
   isLocked: { type: Boolean, default: false },
   lockReason: { type: String, default: '' },
+  status: {
+    type: String,
+    enum: ['ACTIVE', 'RELEASED'],
+    default: 'ACTIVE',
+  },
   battery: { type: Number, default: 100 },
   location: { type: String, default: 'Kalwara, Jaipur' },
   lastSync: { type: Date, default: Date.now },
