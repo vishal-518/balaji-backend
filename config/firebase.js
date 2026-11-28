@@ -1,28 +1,36 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 
-const serviceAccountPath = path.resolve('firebase-service-account.json');
+let firebaseApp = null;
 
 try {
-  if (existsSync(serviceAccountPath)) {
-    const rawData = readFileSync(serviceAccountPath, 'utf8').trim();
-    if (rawData) {
-      const serviceAccount = JSON.parse(rawData);
-      if (!admin.apps.length) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-        });
-        console.log('Firebase Admin Initialized Successfully');
-      }
-    } else {
-      console.warn('WARNING: firebase-service-account.json is empty. Running in FCM simulation mode.');
-    }
+  let serviceAccount = null;
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   } else {
-    console.warn('WARNING: firebase-service-account.json not found. Running in FCM simulation mode.');
+    const credPath = path.resolve(process.env.FIREBASE_CREDENTIALS_PATH || 'firebase-service-account.json');
+    if (existsSync(credPath)) {
+      const rawData = readFileSync(credPath, 'utf8').trim();
+      if (rawData) {
+        serviceAccount = JSON.parse(rawData);
+      }
+    }
+  }
+
+  if (serviceAccount) {
+    firebaseApp = getApps().length === 0
+      ? initializeApp({ credential: cert(serviceAccount) })
+      : getApps()[0];
+    console.log('✅ Firebase Admin Initialized Successfully');
+  } else {
+    console.warn('⚠️ WARNING: Firebase credentials missing. Running in FCM simulation mode.');
   }
 } catch (error) {
-  console.error('Firebase Config Warning:', error.message);
+  console.error('❌ Firebase Config Error:', error.message);
 }
 
-export default admin;
+export const messaging = firebaseApp ? getMessaging(firebaseApp) : null;
+export default firebaseApp;
